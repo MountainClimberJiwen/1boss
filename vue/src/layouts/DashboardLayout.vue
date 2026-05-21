@@ -8,6 +8,7 @@
           <span>1boss</span>
         </div>
         <div class="brand-sub">One App, Built for Solopreneurs.</div>
+        <div style="margin-top:14px;height:1px;background:linear-gradient(90deg, rgba(34,211,238,0.2), rgba(167,139,250,0.1), transparent);"></div>
       </div>
 
       <div class="nav-group">
@@ -58,7 +59,7 @@
       </div>
     </div>
 
-    <main class="main">
+    <main class="main glass-surface">
       <slot />
     </main>
   </div>

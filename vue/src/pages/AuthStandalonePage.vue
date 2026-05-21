@@ -25,7 +25,7 @@
           </div>
         </div>
 
-        <button class="btn light" style="width:100%;margin-top:20px;" :disabled="!username.trim() || !password.trim()" @click="submitLogin">
+        <button class="btn light glow-border" style="width:100%;margin-top:20px;" :disabled="!username.trim() || !password.trim()" @click="submitLogin">
           Sign in to Dashboard
         </button>
 
