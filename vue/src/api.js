@@ -204,3 +204,9 @@ export function setProjectPinned(projectId, pinned) {
     body: JSON.stringify({ pinned })
   })
 }
+
+export function commitProjectToGit(projectId) {
+  return request(`/api/projects/${encodeURIComponent(projectId)}/commit`, {
+    method: 'POST'
+  })
+}

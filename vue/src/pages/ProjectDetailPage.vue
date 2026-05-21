@@ -7,6 +7,7 @@
         <div v-if="displayProjectName(project) !== (project?.project_id || projectId)" class="subtitle" style="margin:4px 0 0;font-size:12px;color:var(--text-tertiary);">ID: {{ project?.project_id || projectId }}</div>
       </div>
       <div class="inline-actions">
+        <button class="icon-btn" title="Commit & Push to Git" :disabled="commitLoading" @click="doCommit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
         <RouterLink class="icon-btn" to="/dashboard/projects" title="Back to Projects"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></RouterLink>
         <RouterLink class="icon-btn" to="/dashboard/tasks" title="Tasks"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></RouterLink>
         <RouterLink class="icon-btn" to="/dashboard/ideas" title="Ideas"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.9.27-1.48.27-2.23A4.88 4.88 0 0 0 12 7a4.88 4.88 0 0 0-3.36 4.77c0 .75.09 1.33.27 2.23"/><path d="M12 2v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M19.78 4.22l-1.42 1.42"/></svg></RouterLink>
@@ -125,6 +126,13 @@
             <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Tasks: {{ project?.counts?.total || 0 }} (pending {{ project?.counts?.pending || 0 }} · running {{ project?.counts?.running || 0 }} · done {{ project?.counts?.done || 0 }} · failed {{ project?.counts?.failed || 0 }})</div>
             <div style="font-size:12px;color:var(--muted);">Latest Run: {{ project?.latest_run_status || '-' }}</div>
             <div style="font-size:12px;color:var(--muted);margin-top:4px;">Threads: {{ threads.length }}</div>
+            <div v-if="commitResult" style="margin-top:10px;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.5;" :style="commitResult.ok ? 'background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.15);color:#34d399;' : 'background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.15);color:#fca5a5;'">
+              <div v-if="commitResult.ok">
+                <div>✅ Task #{{ commitResult.task_id }} enqueued for @{{ commitResult.agent_name }}</div>
+                <div class="subtitle" style="margin-top:4px;">Hermes will handle commit message, git profile, and push.</div>
+              </div>
+              <div v-else>❌ {{ commitResult.error }}</div>
+            </div>
           </div>
         </div>
 
@@ -236,6 +244,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import {
   approveResearchProposal,
+  commitProjectToGit,
   deleteProject,
   getProjectAgents,
   getProjectById,
@@ -268,6 +277,8 @@ const pollInterval = ref(null)
 const pollStatus = ref('')
 const configSaving = ref(false)
 const configError = ref('')
+const commitLoading = ref(false)
+const commitResult = ref(null)
 const proposals = ref([])
 const proposalsLoading = ref(false)
 const proposalActionId = ref(null)
@@ -485,7 +496,7 @@ function scrollToBottom(force = false) {
   lastAutoScrollTime = Date.now()
   const doScroll = () => {
     if (timelineScrollRef.value === el) {
-      el.scrollTop = el.scrollHeight
+      el.scrollTo({ top: el.scrollHeight, behavior: 'auto' })
     }
   }
   doScroll()
@@ -499,7 +510,11 @@ function scrollToBottom(force = false) {
 
 function onTimelineScroll() {
   if (Date.now() - lastAutoScrollTime < 100) return
-  if (!isNearBottom(timelineScrollRef.value)) {
+  const el = timelineScrollRef.value
+  if (!el) return
+  if (isNearBottom(el)) {
+    userManuallyScrolled = false
+  } else {
     userManuallyScrolled = true
   }
 }
@@ -710,6 +725,19 @@ function startNewThread() {
   sendError.value = ''
   stopPollTimeline()
   pollStatus.value = ''
+}
+
+async function doCommit() {
+  commitLoading.value = true
+  commitResult.value = null
+  try {
+    const data = await commitProjectToGit(projectId.value)
+    commitResult.value = { ok: true, ...data }
+  } catch (err) {
+    commitResult.value = { ok: false, error: err instanceof Error ? err.message : 'commit failed' }
+  } finally {
+    commitLoading.value = false
+  }
 }
 
 async function doDelete() {
