@@ -1,0 +1,18 @@
+[Unit]
+Description=mem0 memory server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/mem0
+EnvironmentFile=-/etc/mem0.env
+Environment=PYTHONUNBUFFERED=1
+Environment=MEM0_DATA_DIR=/opt/mem0/data
+Environment=MEM0_PORT=8000
+ExecStart=/usr/bin/python3 /opt/mem0/main.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import ProjectPage from './pages/ProjectPage.vue'
+import ProjectDetailPage from './pages/ProjectDetailPage.vue'
 import TaskPage from './pages/TaskPage.vue'
 import IdeaPage from './pages/IdeaPage.vue'
 import TaskDetailPage from './pages/TaskDetailPage.vue'
@@ -11,8 +12,9 @@ import AuthStandalonePage from './pages/AuthStandalonePage.vue'
 export default createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/website/en' },
+    { path: '/', component: WebsiteHomeEn },
     { path: '/dashboard/projects', component: ProjectPage },
+    { path: '/dashboard/project/:id', component: ProjectDetailPage },
     { path: '/dashboard/tasks', component: TaskPage },
     { path: '/dashboard/ideas', component: IdeaPage },
     { path: '/dashboard/task/:id', component: TaskDetailPage },

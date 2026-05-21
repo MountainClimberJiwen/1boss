@@ -1,5 +1,6 @@
 <template>
   <div class="page-shell dashboard-layout">
+    <div v-if="mobileNavOpen" class="mobile-nav-backdrop" @click="closeMobileNav" />
     <aside class="sidebar">
       <div>
         <div class="brand">
@@ -39,7 +40,7 @@
       </button>
     </div>
 
-    <div v-if="mobileNavOpen" class="mobile-nav-sheet">
+    <div v-if="mobileNavOpen" class="mobile-nav-sheet" @click.stop>
       <div class="nav-group">
         <RouterLink class="nav-item" :class="{ active: active === 'projects' }" to="/dashboard/projects" @click="closeMobileNav">Projects <span>›</span></RouterLink>
         <RouterLink class="nav-item" :class="{ active: active === 'tasks' }" to="/dashboard/tasks" @click="closeMobileNav">Tasks <span>›</span></RouterLink>
@@ -66,6 +67,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { getApiBase } from '../api'
 
 defineProps({
   active: {
@@ -85,11 +87,15 @@ function closeMenu() {
 
 function closeMobileNav() {
   mobileNavOpen.value = false
+  document.body.style.overflow = ''
 }
 
 function toggleMobileNav() {
   mobileNavOpen.value = !mobileNavOpen.value
-  if (!mobileNavOpen.value) {
+  if (mobileNavOpen.value) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
     closeMenu()
   }
 }
@@ -105,11 +111,12 @@ function toggleMenu() {
 
 async function logout() {
   try {
-    await fetch('/logout', {
+    await fetch(`${getApiBase()}/logout`, {
       credentials: 'include'
     })
   } finally {
     closeMobileNavAndMenu()
+    document.body.style.overflow = ''
     await router.push('/auth')
   }
 }
@@ -128,5 +135,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('click', onWindowClick)
+  document.body.style.overflow = ''
 })
 </script>

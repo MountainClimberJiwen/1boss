@@ -9,9 +9,11 @@ if [[ ! -f "$VENV" ]]; then
   exit 1
 fi
 
-source "$VENV"
 export TASK_QUEUE_DB_PATH="${TASK_QUEUE_DB_PATH:-$ROOT/data/task_queue.db}"
 export TASK_QUEUE_DISPATCHER_PROJECT_ID="${TASK_QUEUE_DISPATCHER_PROJECT_ID:-all}"
 export TASK_QUEUE_DISPATCHER_BACKEND="${TASK_QUEUE_DISPATCHER_BACKEND:-hermes}"
+if [[ -x "/Users/jiwen/.local/bin/kimi" ]]; then
+  export TASK_QUEUE_KIMI_BIN="${TASK_QUEUE_KIMI_BIN:-/Users/jiwen/.local/bin/kimi}"
+fi
 
-exec task-queue run-dispatcher
+exec "$ROOT/.venv/bin/python3" -m task_queue_system.cli run-dispatcher

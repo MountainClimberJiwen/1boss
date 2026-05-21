@@ -1,0 +1,9 @@
+{
+  "appId": "com.oneboss.app",
+  "appName": "1boss",
+  "webDir": "dist",
+  "server": {
+    "iosScheme": "https",
+    "cleartext": true
+  }
+}

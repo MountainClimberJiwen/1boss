@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Personal / privacy
+.harness/
+.hermes/
+.codex_runtime/
+
+# Runtime data & local state
+data/
+state/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Node
+node_modules/
+
+# Capacitor generated native projects
+vue/ios/
+vue/android/
