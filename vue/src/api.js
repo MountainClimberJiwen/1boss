@@ -180,6 +180,36 @@ export function createIdea(payload) {
   })
 }
 
+export function getAudioSummaries(limit = 100) {
+  return request(`/api/ideas/audio-summaries?limit=${limit}`)
+}
+
+export function generateDailySummary(date = null) {
+  return request('/api/ideas/generate-daily-summary', {
+    method: 'POST',
+    body: JSON.stringify(date ? { date } : {})
+  })
+}
+
+export function playAudioOnMobile(summaryId) {
+  return request(`/api/ideas/audio-summaries/${summaryId}/play-on-mobile`, {
+    method: 'POST'
+  })
+}
+
+export function getMobilePlayQueue(deviceId = null) {
+  const params = new URLSearchParams()
+  if (deviceId) params.set('device_id', deviceId)
+  return request(`/api/mobile/play-queue${params.toString() ? `?${params.toString()}` : ''}`)
+}
+
+export function ackMobilePlayRequest(requestId) {
+  return request('/api/mobile/play-queue/ack', {
+    method: 'POST',
+    body: JSON.stringify({ request_id: requestId })
+  })
+}
+
 export function addProject(payload) {
   return request('/api/project-intakes', {
     method: 'POST',
