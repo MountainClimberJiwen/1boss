@@ -231,6 +231,19 @@
           <div style="font-weight:600;margin-bottom:8px;">Actions</div>
           <button class="btn" style="width:100%;margin-bottom:6px;" @click="reloadAll">Reload</button>
           <button class="btn" style="width:100%;margin-bottom:6px;" @click="startNewThread">Clear thread selection</button>
+          <button
+            class="btn"
+            style="width:100%;margin-bottom:6px;"
+            :disabled="autoresearchLoading || !project?.autoresearch"
+            :title="project?.autoresearch ? 'Run auto-research now' : 'Enable autoresearch first'"
+            @click="doRunAutoresearch"
+          >
+            <span v-if="autoresearchLoading">Running...</span>
+            <span v-else>Run Auto-Research</span>
+          </button>
+          <div v-if="autoresearchResult" class="subtitle" style="margin:0 0 8px;font-size:11px;" :style="autoresearchResult.ok ? 'color:#86efac;' : 'color:#fca5a5;'">
+            {{ autoresearchResult.message }}
+          </div>
           <button class="btn" style="width:100%;background:#4a232a;border-color:#4a232a;" @click="doDelete">Delete Project</button>
         </div>
       </div>
@@ -252,6 +265,7 @@ import {
   getProjectThreads,
   getResearchProposals,
   rejectResearchProposal,
+  runAutoresearch,
   sendHermesFollowup,
   updateProjectConfig
 } from '../api'
@@ -282,6 +296,8 @@ const commitResult = ref(null)
 const proposals = ref([])
 const proposalsLoading = ref(false)
 const proposalActionId = ref(null)
+const autoresearchLoading = ref(false)
+const autoresearchResult = ref(null)
 const expandedKeys = ref(new Set())
 const textareaRef = ref(null)
 const timelineScrollRef = ref(null)
@@ -737,6 +753,29 @@ async function doCommit() {
     commitResult.value = { ok: false, error: err instanceof Error ? err.message : 'commit failed' }
   } finally {
     commitLoading.value = false
+  }
+}
+
+async function doRunAutoresearch() {
+  if (!projectId.value || !project.value?.autoresearch) return
+  autoresearchLoading.value = true
+  autoresearchResult.value = null
+  try {
+    const result = await runAutoresearch(false)
+    const created = result.created || 0
+    const projectIds = (result.projects || []).map((p) => p.project_id).join(', ')
+    autoresearchResult.value = {
+      ok: true,
+      message: `Created ${created} proposal(s)${projectIds ? ' for ' + projectIds : ''}`,
+    }
+    await reloadProposals()
+  } catch (err) {
+    autoresearchResult.value = {
+      ok: false,
+      message: err instanceof Error ? err.message : 'auto-research failed',
+    }
+  } finally {
+    autoresearchLoading.value = false
   }
 }
 

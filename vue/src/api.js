@@ -240,3 +240,15 @@ export function commitProjectToGit(projectId) {
     method: 'POST'
   })
 }
+
+export function syncStaleTasks(hours = null) {
+  const params = new URLSearchParams()
+  if (hours != null) params.set('hours', String(hours))
+  return request(`/api/tasks/sync-stale${params.toString() ? `?${params.toString()}` : ''}`)
+}
+
+export function runAutoresearch(autoApprove = false) {
+  const params = new URLSearchParams()
+  if (autoApprove) params.set('auto_approve', 'true')
+  return request(`/api/autoresearch/run${params.toString() ? `?${params.toString()}` : ''}`)
+}

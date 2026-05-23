@@ -1,5 +1,20 @@
 <template>
   <DashboardLayout active="tasks">
+    <!-- Note detail modal -->
+    <div v-if="showNoteModal" class="note-modal-backdrop" @click.self="closeNoteModal">
+      <div class="note-modal">
+        <div class="note-modal-header">
+          <span class="note-modal-title">{{ modalNoteTitle }}</span>
+          <button class="icon-btn" title="Close" @click="closeNoteModal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="note-modal-body">
+          <pre class="note-modal-pre">{{ modalNoteContent }}</pre>
+        </div>
+      </div>
+    </div>
+
     <div class="topbar">
       <div>
         <div class="eyebrow">Execution</div>
@@ -7,6 +22,10 @@
       </div>
       <div class="inline-actions">
         <RouterLink class="icon-btn" to="/dashboard/projects" title="Projects"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></RouterLink>
+        <button class="icon-btn" title="Sync stale tasks" :disabled="syncLoading" @click="doSyncStale">
+          <svg v-if="syncLoading" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+        </button>
         <button class="icon-btn" title="Refresh" @click="reload"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
       </div>
     </div>
@@ -138,8 +157,12 @@
               </td>
               <td class="mono" style="color:var(--text-secondary);font-size:11px;">{{ formatTs(task.run_updated_at || task.started_at || task.created_at) }}</td>
               <td>
-                <div style="max-width:200px;max-height:4.5em;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;color:var(--text-secondary);font-size:11.5px;line-height:1.6;">
-                  {{ task.last_error || task.payload }}
+                <div
+                  style="max-width:200px;max-height:4.5em;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;color:var(--text-secondary);font-size:11.5px;line-height:1.6;cursor:pointer;"
+                  :title="'Double-click to view full content'"
+                  @dblclick="openNoteModal(task)"
+                >
+                  {{ summarizePayload(task.last_error || task.payload) }}
                 </div>
               </td>
             </tr>
@@ -174,7 +197,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
-import { getTasks, getProjectState, enqueueTask, getApiBase, getBackendStats, getMemoryFeedback } from '../api'
+import { getTasks, getProjectState, enqueueTask, getApiBase, getBackendStats, getMemoryFeedback, syncStaleTasks } from '../api'
 
 const tasks = ref([])
 const projects = ref([])
@@ -190,6 +213,11 @@ const taskPayload = ref('')
 const enqueueLoading = ref(false)
 const enqueueError = ref('')
 const enqueueOk = ref('')
+const syncLoading = ref(false)
+
+const showNoteModal = ref(false)
+const modalNoteContent = ref('')
+const modalNoteTitle = ref('')
 
 const runningCount = computed(() => tasks.value.filter((x) => (x.run_status || x.status) === 'running').length)
 const failedCount = computed(() => tasks.value.filter((x) => x.status === 'failed').length)
@@ -286,6 +314,46 @@ function onComposerKeydown(e) {
   }
 }
 
+function summarizePayload(text) {
+  if (!text) return '-'
+  const str = String(text).trim()
+  // Try to parse as JSON and extract a meaningful snippet
+  try {
+    const parsed = JSON.parse(str)
+    if (parsed && typeof parsed === 'object') {
+      const keys = ['instruction', 'content', 'message', 'text', 'task', 'description', 'prompt', 'note', 'summary']
+      for (const key of keys) {
+        if (parsed[key] != null) {
+          const val = String(parsed[key]).trim()
+          if (val) {
+            return val.length > 80 ? val.slice(0, 80) + '…' : val
+          }
+        }
+      }
+      // No known key — show a compact JSON preview
+      const preview = JSON.stringify(parsed).slice(0, 80)
+      return preview.length >= 80 ? preview + '…' : preview
+    }
+  } catch {
+    // Not JSON — fall through to plain text truncation
+  }
+  return str.length > 80 ? str.slice(0, 80) + '…' : str
+}
+
+function openNoteModal(task) {
+  const content = task.last_error || task.payload
+  if (!content) return
+  modalNoteTitle.value = `Task #${task.id} — ${task.last_error ? 'Error' : 'Payload'}`
+  modalNoteContent.value = typeof content === 'object' ? JSON.stringify(content, null, 2) : String(content)
+  showNoteModal.value = true
+}
+
+function closeNoteModal() {
+  showNoteModal.value = false
+  modalNoteContent.value = ''
+  modalNoteTitle.value = ''
+}
+
 async function reload() {
   loading.value = true
   error.value = ''
@@ -325,6 +393,20 @@ onMounted(() => {
   reload()
   loadProjects()
 })
+
+async function doSyncStale() {
+  if (syncLoading.value) return
+  syncLoading.value = true
+  try {
+    const result = await syncStaleTasks()
+    enqueueOk.value = `Synced: ${result.running_synced || 0} running + ${result.pending_synced || 0} pending marked failed`
+    await reload()
+  } catch (err) {
+    enqueueError.value = err instanceof Error ? err.message : 'sync stale tasks failed'
+  } finally {
+    syncLoading.value = false
+  }
+}
 
 async function copySession(sessionId) {
   try {
